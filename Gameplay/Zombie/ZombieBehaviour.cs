@@ -100,6 +100,12 @@ namespace Gameplay.Script.Gameplay
         }
 
         private ElementItemObject[] _elementItemObjects;
+        private IGameplayManager _gameplayManager;
+
+        public void Initialize(IGameplayManager gameplayManager)
+        {
+            _gameplayManager = gameplayManager;
+        }
 
         private void Awake()
         {
@@ -147,7 +153,7 @@ namespace Gameplay.Script.Gameplay
         
         private void Update()
         {
-            if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
+            if (_gameplayManager != null && _gameplayManager.GameplayState != GameplayState.Gaming) return;
             _currentTime -= Time.deltaTime;
             if (SceneLoadManager.Instance.GetActiveSceneIndex()
                 == (int)SceneLoadManager.SceneIndex.MRScene)
@@ -302,7 +308,7 @@ namespace Gameplay.Script.Gameplay
         /// <returns></returns>
         IEnumerator ZombieBehaviourCoroutine()
         {
-            yield return new WaitUntil(() => GameplayMgr.Instance.GameplayState == GameplayState.Gaming);
+            yield return new WaitUntil(() => _gameplayManager != null && _gameplayManager.GameplayState == GameplayState.Gaming);
             agent.Init(_target, _enemyLevelData.speed, jungleHeartDis);
             ChangeBehaviour(_zombieState, ZombieState.Moving, () =>
             {
@@ -340,7 +346,7 @@ namespace Gameplay.Script.Gameplay
                     }
                 }
                 yield return new WaitForSeconds(0.1f);
-                yield return new WaitUntil(() => GameplayMgr.Instance.GameplayState == GameplayState.Gaming);
+                yield return new WaitUntil(() => _gameplayManager != null && _gameplayManager.GameplayState == GameplayState.Gaming);
             }
         }
 
@@ -367,7 +373,7 @@ namespace Gameplay.Script.Gameplay
                         if (SceneLoadManager.Instance.GetActiveSceneIndex()
                             == (int)SceneLoadManager.SceneIndex.MRScene)
                         {
-                            ((ProtectPlantsGameplay)GameplayMgr.Instance).JungleHeart.UnderAttack(
+                            (_gameplayManager as ProtectPlantsGameplay)?.JungleHeart.UnderAttack(
                                 _zombieAsset.attackValue, null, null);
                             return;
                         }
@@ -479,7 +485,7 @@ namespace Gameplay.Script.Gameplay
                 }
             }
             if (_zombieState == ZombieState.Dead) return;
-            if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
+            if (_gameplayManager != null && _gameplayManager.GameplayState != GameplayState.Gaming) return;
             _health -= damage;
 
             if (_health <= 0)
@@ -609,7 +615,7 @@ namespace Gameplay.Script.Gameplay
             // if (SceneLoadManager.Instance.GetActiveSceneIndex()
             //     == (int)SceneLoadManager.SceneIndex.MRScene) return;
             if (_zombieState >= ZombieState.Dead) return;
-            if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
+            if (_gameplayManager != null && _gameplayManager.GameplayState != GameplayState.Gaming) return;
             
             if (userPlant.plantId.ToLower().Contains("weapon"))
             {
@@ -632,7 +638,7 @@ namespace Gameplay.Script.Gameplay
                 int defenseValue = _enemyLevelData?.defenseValue ?? 0;
                 int weaponDamage = 20;
                 if (_zombieState >= ZombieState.Dead) return;
-                if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
+                if (_gameplayManager != null && _gameplayManager.GameplayState != GameplayState.Gaming) return;
                 weaponDamage -= defenseValue;
                 weaponDamage = Math.Max(weaponDamage, 1);
                 _health -= weaponDamage;
@@ -1025,7 +1031,7 @@ namespace Gameplay.Script.Gameplay
         public void NetworkUnderAttack(bool isServer, string id, int itemCount)
         {
             if (_zombieState >= ZombieState.Dead) return;
-            if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
+            if (_gameplayManager != null && _gameplayManager.GameplayState != GameplayState.Gaming) return;
             
             // if (id.ToLower().Contains("weapon"))
             // {

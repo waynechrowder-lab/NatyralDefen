@@ -279,6 +279,7 @@ namespace Gameplay.Script.Gameplay
             Quaternion originRot = Quaternion.LookRotation(target.position - originPos);
 
             var obj = Instantiate(asset.zombiePrefab);
+            obj.Initialize(GameplayMgr.Instance);
             obj.OnSpawn(asset, originPos, originRot, target, minute);
             _zombieBehaviours.Add(obj);
             //var mGameObject = asset;

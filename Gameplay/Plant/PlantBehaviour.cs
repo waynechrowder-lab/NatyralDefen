@@ -58,11 +58,17 @@ namespace Gameplay.Script.Gameplay
             ApplyUpgradeVisual(0);
         }
 
+        public void Initialize(IGameplayManager gameplayManager)
+        {
+            _gameplayManager = gameplayManager;
+        }
+
         [SerializeField] private ModularPlantAsset definition;
 
         private readonly List<IPlantSkill> _skills = new();
         private PlantContext _ctx;
         private PlantAnimator _anim;
+        private IGameplayManager _gameplayManager;
         
         void SetPlantContext()
         {
@@ -196,7 +202,7 @@ namespace Gameplay.Script.Gameplay
         public void UnderAttack(int damage)
         {
             if (_plantState >= PlantState.Dead) return;
-            if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
+            if (_gameplayManager != null && _gameplayManager.GameplayState != GameplayState.Gaming) return;
             _ctx.DoDamage(damage);
             var health = _ctx.Health;
 
