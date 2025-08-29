@@ -424,6 +424,7 @@ namespace Gameplay.Script.Gameplay
                     }
                     if (_currentPlantBehaviour) DestroyImmediate(_currentPlantBehaviour.gameObject);
                     _currentPlantBehaviour = Instantiate(res, plantSelectorParent).GetComponent<PlantBehaviour>();
+                    _currentPlantBehaviour.Initialize(GameplayMgr.Instance);
                     _currentPlantBehaviour.SetAsPreview();
                     return;
                 }
@@ -439,6 +440,7 @@ namespace Gameplay.Script.Gameplay
             // networkObj.TrySetParent(plantSelectorParent);
             // networkObj.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             _currentPlantBehaviour = networkObj.GetComponent<PlantBehaviour>();
+            _currentPlantBehaviour.Initialize(GameplayMgr.Instance);
             _currentPlantBehaviour.SetAsPreview();
         }
     }

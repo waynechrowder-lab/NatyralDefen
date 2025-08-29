@@ -230,6 +230,7 @@ namespace Gameplay.Script.MiniWorldGameplay
                     return;
                 }
                 var obj = Instantiate(res).GetComponent<ZombieBehaviour>();
+                obj.Initialize(GameplayMgr.Instance);
                 obj.transform.SetPositionAndRotation(originPos, originRot);
                 obj.OnSpawn(enemyId, enemyLevel, originPos, originRot, target);
                 _zombieBehaviours.Add(obj);
@@ -242,6 +243,7 @@ namespace Gameplay.Script.MiniWorldGameplay
                 return;
             }
             var zombieObj = networkObj.GetComponent<ZombieBehaviour>();
+            zombieObj.Initialize(GameplayMgr.Instance);
             zombieObj.transform.SetPositionAndRotation(originPos, originRot);
             zombieObj.OnSpawn(enemyId, enemyLevel, originPos, originRot, target);
             _zombieBehaviours.Add(zombieObj);

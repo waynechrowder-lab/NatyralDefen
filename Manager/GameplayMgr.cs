@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Gameplay.Script.Manager
 {
-    public class GameplayMgr : MonoSingleton<GameplayMgr>
+    public class GameplayMgr : MonoSingleton<GameplayMgr>, IGameplayManager
     {
         private GameplayState _gameplayState = GameplayState.None;
 
