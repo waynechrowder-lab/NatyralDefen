@@ -1,4 +1,5 @@
 ﻿
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Gameplay.Script.Gameplay
@@ -24,6 +25,9 @@ namespace Gameplay.Script.Gameplay
 
         public int coin;
         public int exp;
+
+        [Header("技能（可选）")]
+        public List<ZombieSkillAsset> skills = new List<ZombieSkillAsset>();
     }
 
     public enum ZombieType

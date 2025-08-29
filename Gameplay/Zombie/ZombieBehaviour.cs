@@ -15,7 +15,7 @@ using Random = UnityEngine.Random;
 
 namespace Gameplay.Script.Gameplay
 {
-    public class ZombieBehaviour : MonoBehaviour, IInteroperableObject
+    public class ZombieBehaviour : MonoBehaviour, IInteroperableObject, ICharacter
     {
         [SerializeField] private AudioClip attackAudio;
         [SerializeField] private AudioClip underAttackAudio;
@@ -79,13 +79,14 @@ namespace Gameplay.Script.Gameplay
         private GameObject _portal;
         private ZombieState _zombieState;
         public ZombieState ZombieState =>  _zombieState;
+        public bool IsAlive => _zombieState < ZombieState.Dead;
+        public int Health => _ctx?.Health ?? 0;
         private Transform _target;
         private PlantBehaviour _targetPlant;
         private List<Renderer> _renderers;
         private Color _currentColor;
         private float _currentTime;
         private float _timer;
-        [SerializeField] private int _health;
         private Tweener _iconMove;
         private int _minute;
         private string _enemyId;
@@ -93,6 +94,8 @@ namespace Gameplay.Script.Gameplay
         [SerializeField] private EnemyLevelData _enemyLevelData;
 
         private ZombieAsset _zombieAsset;
+        private ZombieContext _ctx;
+        private readonly List<IZombieSkill> _skills = new();
         public ZombieType ZombieType
         {
             get;
@@ -154,6 +157,9 @@ namespace Gameplay.Script.Gameplay
                 return;
             UpdatePoisonElement();
             UpdateIceElement();
+            float dt = Time.deltaTime;
+            for (int i = 0; i < _skills.Count; i++)
+                _skills[i].Tick(dt);
         }
         
         public void OnGamePause()
@@ -162,14 +168,18 @@ namespace Gameplay.Script.Gameplay
             if (agent) agent.Pause();
             if (_groanAudioSource) _groanAudioSource.Pause();
             if (_audioSource) _audioSource.Pause();
+            for (int i = 0; i < _skills.Count; i++)
+                _skills[i].OnPaused(true);
         }
-        
+
         public void OnGameUnPause()
         {
             if (zombieAnimator) zombieAnimator.SetSpeed(1);
             if (agent) agent.UnPause();
             if (_groanAudioSource) _groanAudioSource.UnPause();
             if (_audioSource) _audioSource.UnPause();
+            for (int i = 0; i < _skills.Count; i++)
+                _skills[i].OnPaused(false);
         }
 
         private void OnGameOver(GameEventArg arg)
@@ -198,8 +208,14 @@ namespace Gameplay.Script.Gameplay
 
             _enemyInherentData = EnemyData.Instance.GetEnemy(enemyId);
             _enemyLevelData = EnemyData.Instance.GetEnemyLevel(enemyId, level);
-            
-            _health = _enemyLevelData.health;
+
+            _ctx = new ZombieContext
+            {
+                Host = gameObject,
+                Transform = transform,
+                Animator = zombieAnimator,
+                Health = _enemyLevelData.health
+            };
             
             // NavMeshHit hit;
             // if (NavMesh.SamplePosition(originPos, out hit, _enemyLevelData.attackRange, NavMesh.AllAreas))
@@ -230,11 +246,18 @@ namespace Gameplay.Script.Gameplay
                 k++;
             }
 
-            _health = (int)health;
+            _ctx = new ZombieContext
+            {
+                Host = gameObject,
+                Transform = transform,
+                Animator = zombieAnimator,
+                Asset = asset,
+                Health = (int)health
+            };
 
             _enemyLevelData = new EnemyLevelData()
             {
-                health = _health,
+                health = _ctx.Health,
                 attackInterval = asset.attackInterval,
                 attackRange = asset.attackRange,
                 attackValue = (int)attackV,
@@ -247,7 +270,17 @@ namespace Gameplay.Script.Gameplay
                 originPos = hit.position;
             transform.SetPositionAndRotation(originPos, originRot);
             zombieAnimator.Init();
-            
+            if (asset.skills != null)
+            {
+                foreach (var sk in asset.skills)
+                {
+                    if (!sk) continue;
+                    var skill = sk.AddTo(gameObject);
+                    skill.Init(_ctx, sk);
+                    _skills.Add(skill);
+                }
+            }
+
             _portal = Instantiate(portal);
             _portal.SetActive(true);
             _portal.transform.SetPositionAndRotation(portal.transform.position, portal.transform.rotation);
@@ -455,7 +488,12 @@ namespace Gameplay.Script.Gameplay
 
         public void UnderAttack(string id, int userObjId, int itemCount)
         {
-            
+
+        }
+
+        public void UnderAttack(int damage)
+        {
+            UnderAttack(damage, null, null);
         }
 
         public void UnderAttack(int damage, BuffAsset buff, Color? color)
@@ -480,9 +518,9 @@ namespace Gameplay.Script.Gameplay
             }
             if (_zombieState == ZombieState.Dead) return;
             if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
-            _health -= damage;
+            _ctx.DoDamage(damage);
 
-            if (_health <= 0)
+            if (_ctx.Health <= 0)
             {
                 Death(buff && buff.plantType == BuffType.自爆 ? "爆炸" : null);
             }
@@ -493,7 +531,7 @@ namespace Gameplay.Script.Gameplay
             if (color.HasValue && (_currentTime < 0 || damage >= 300))
             {
                 _currentTime = colorCanChangeInterval;
-                if (buff || (damage >= 300 && _health <= 0))
+                if (buff || (damage >= 300 && _ctx.Health <= 0))
                 {
                     _renderers.ForEach(value =>
                     {
@@ -553,8 +591,8 @@ namespace Gameplay.Script.Gameplay
                 if (t < duration)
                     continue;
                 k++;
-                _health -= damage;
-                if (_health <= 0)
+                _ctx.DoDamage(damage);
+                if (_ctx.Health <= 0)
                 {
                     Death(null);
                     yield break;
@@ -635,8 +673,8 @@ namespace Gameplay.Script.Gameplay
                 if (GameplayMgr.Instance.GameplayState != GameplayState.Gaming) return;
                 weaponDamage -= defenseValue;
                 weaponDamage = Math.Max(weaponDamage, 1);
-                _health -= weaponDamage;
-                if (_health <= 0)
+                _ctx.DoDamage(weaponDamage);
+                if (_ctx.Health <= 0)
                     Death(null);
                 else
                     zombieAnimator.StartAnimation(ZombieState.UnderAttacking);
@@ -680,8 +718,8 @@ namespace Gameplay.Script.Gameplay
             
                 damage -= defenseValue;
                 damage = Math.Max(damage, 1);
-                _health -= (int)damage;
-                if (_health <= 0)
+                _ctx.DoDamage((int)damage);
+                if (_ctx.Health <= 0)
                     Death(inherentData.attribute);
                 else
                     zombieAnimator.StartAnimation(ZombieState.UnderAttacking);
@@ -760,11 +798,17 @@ namespace Gameplay.Script.Gameplay
             int defenseValue = _enemyLevelData?.defenseValue ?? 0;
             damage -= defenseValue;
             damage = Math.Max(damage, 1);
-            _health -= (int)damage;
-            if (_health <= 0)
+            _ctx.DoDamage((int)damage);
+            if (_ctx.Health <= 0)
                 Death("plant");
             else
                 zombieAnimator.StartAnimation(ZombieState.UnderAttacking);
+        }
+
+        public void PlayAnimation(int state)
+        {
+            if (zombieAnimator)
+                zombieAnimator.StartAnimation((ZombieState)state);
         }
 
         private float _maxIceValue = 1;
@@ -801,7 +845,7 @@ namespace Gameplay.Script.Gameplay
                         a = 1
                     };
             }
-            bool bombDie = inherentData.attribute != null && inherentData.attribute.Contains("爆炸") && _health <= 0;
+            bool bombDie = inherentData.attribute != null && inherentData.attribute.Contains("爆炸") && _ctx.Health <= 0;
             if (MultiplayerLogic.Instance.IsHost() || !MultiplayerLogic.Instance.IsMultiPlay())
             {
                 ApplyUnderAttackColor(color, bombDie);
@@ -900,6 +944,8 @@ namespace Gameplay.Script.Gameplay
             arg0.SetArg(1, _enemyLevelData.level);
             arg0.SetArg(2, _enemyLevelData.expValue);
             EventDispatcher.Instance.Dispatch((int)EventID.EnemyDead);
+            for (int i = 0; i < _skills.Count; i++)
+                _skills[i].OnZombieDeath();
             InvokeRepeating(nameof(ZombieDissolve), 3, 0.03f);
         }
         /// <summary>
@@ -916,7 +962,7 @@ namespace Gameplay.Script.Gameplay
             }
         }
         
-        void Kill()
+        public void Kill()
         {
             if (_zombieState >= ZombieState.Dead) return;
             agent.Stop();
@@ -930,6 +976,8 @@ namespace Gameplay.Script.Gameplay
                 _audioSource.Stop();
             });
             Destroy(gameObject, destroyTime);
+            for (int i = 0; i < _skills.Count; i++)
+                _skills[i].OnZombieDeath();
             InvokeRepeating(nameof(ZombieDissolve), 3, 0.03f);
         }
         
