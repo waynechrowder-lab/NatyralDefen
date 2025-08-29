@@ -17,7 +17,7 @@ using UnityEngine.Serialization;
 
 namespace Gameplay.Script.Gameplay
 {
-    public class PlantBehaviour : MonoBehaviour
+    public class PlantBehaviour : MonoBehaviour, ICharacter
     {
         [SerializeField] private PlantUpgradeUIMono upgradeUIMono;
         [Header("投掷力度offset")]
@@ -29,6 +29,7 @@ namespace Gameplay.Script.Gameplay
         
         private PlantState _plantState = PlantState.Spawn;
         public bool IsAlive => _plantState < PlantState.Dead;
+        public int Health => _ctx?.Health ?? 0;
         private Rigidbody rb;
         private Vector3 lastPosition;
         private Quaternion lastRotation;
@@ -198,7 +199,13 @@ namespace Gameplay.Script.Gameplay
             rb.velocity = velocity * force;
             rb.angularVelocity = velocityRot;
         }
-        
+
+        public void PlayAnimation(int state)
+        {
+            if (_anim)
+                _anim.StartAnimation((PlantState)state);
+        }
+
         public void UnderAttack(int damage)
         {
             if (_plantState >= PlantState.Dead) return;

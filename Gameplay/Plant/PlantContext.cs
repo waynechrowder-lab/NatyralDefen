@@ -5,13 +5,9 @@ using UnityEngine;
 namespace Gameplay.Script.Gameplay
 {
     [System.Serializable]
-    public class PlantContext
+    public class PlantContext : CharacterContext
     {
-        public GameObject Host;
-        public Transform Transform;
         public PlantAnimator Animator;
-        
-        public int Health;
         public int Level;
         
         public PlantInherentData PlantInherentData;
@@ -85,9 +81,5 @@ namespace Gameplay.Script.Gameplay
             return Level <= 5;
         }
 
-        public void DoDamage(int damage)
-        {
-            Health -= damage;
-        }
     }
 }
